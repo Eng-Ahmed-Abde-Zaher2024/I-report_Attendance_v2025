@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>I-Report Attendance</title>
+    <link rel="icon" type="image/x-icon" href="logo2.png" />
+
+    <link rel="stylesheet" href="assets/all.min.css" />
+    <script src="assets/jquery-3.6.0.min.js"></script>
+    <script src="assets/xlsx.full.min.js"></script>
+    <style>
+      :root {
+        --primary-color: #2e6c7d;
+        --primary-dark: #1b4a5e;
+        --secondary-color: #125986;
+        --bg-light: #f5f5f5;
+        --bg-dark: #1e1e1e;
+        --text-light: #333;
+        --text-dark: #f0f0f0;
+        --card-bg: #ffffff;
+        --border-color: #e0e0e0;
+        --success-color: #2e7d32;
+        --warning-color: #ffcb2e;
+        --off-day-color: #e2e3e5;
+        --public-holiday: #ffcb2e;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: var(--bg-light);
+        color: var(--text-light);
+        margin: 0;
+        padding: 0;
+        transition: all 0.3s ease;
+        line-height: 1.6;
+      }
+
+      .dark-mode {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+        --card-bg: #2d2d2d;
+        --border-color: #444;
+        --off-day-color: #3a3a3a;
+      }
+
+      .container {
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      header {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--primary-dark)
+        );
+        color: white;
+        padding: 25px 0;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 600;
+      }
+
+      header p {
+        margin: 8px 0 0;
+        opacity: 0.9;
+        font-size: 1rem;
+      }
+
+      .card {
+        background: var(--card-bg);
+        border-radius: 10px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--border-color);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--primary-color);
+      }
+
+      .card-title {
+        color: var(--primary-color);
+        font-size: 1.5rem;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .card-title i {
+        font-size: 1.3em;
+      }
+
+      .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+        gap: 15px;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        padding: 12px 24px;
+        font-size: 15px;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+
+      button:hover {
+        background: var(--primary-dark);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      button.secondary {
+        background: var(--secondary-color);
+      }
+
+      button.secondary:hover {
+        background: #0d4b6e;
+      }
+
+      button i {
+        font-size: 1.1em;
+      }
+
+      select {
+        padding: 12px 16px;
+        font-size: 15px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--card-bg);
+        color: var(--text-light);
+        cursor: pointer;
+        min-width: 180px;
+      }
+
+      .dark-mode select {
+        background: var(--card-bg);
+        color: var(--text-dark);
+        border-color: #555;
+      }
+
+      /* Table container with scroll */
+      .table-container {
+        width: 100%;
+        max-height: 600px;
+        overflow: auto;
+        margin-top: 20px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        position: relative;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 800px;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--border-color);
+        padding: 8px;
+        text-align: center;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+      }
+
+      /* Fixed header row */
+      thead th {
+        position: sticky;
+        top: 0;
+        background-color: var(--primary-color);
+        color: white;
+        font-weight: 600;
+        font-size: 0.85em;
+        letter-spacing: 0.5px;
+        z-index: 10;
+      }
+
+      /* Fixed first column */
+      tbody th:first-child,
+      thead th:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 11;
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      tbody td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background-color: var(--card-bg);
+      }
+
+      .dark-mode tbody td:first-child {
+        background-color: var(--card-bg);
+      }
+
+      td.public {
+        background-color: var(--public-holiday);
+        color: #8a6d3b;
+        font-weight: 600;
+      }
+
+      td.off {
+        background-color: var(--off-day-color);
+        color: #555;
+      }
+
+      td.att {
+        background-color: #d4edda;
+        color: var(--success-color);
+        font-weight: 600;
+      }
+
+      .dark-mode td.att {
+        background-color: rgba(46, 125, 50, 0.2);
+      }
+
+      .alert {
+        padding: 14px 18px;
+        border-radius: 6px;
+        margin: 20px 0;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .alert-warning {
+        background-color: #fff3cd;
+        color: #856404;
+        border-left: 4px solid #ffeeba;
+      }
+
+      .dark-mode .alert-warning {
+        background-color: rgba(255, 193, 7, 0.2);
+        color: #ffd54f;
+        border-left: 4px solid rgba(255, 193, 7, 0.5);
+      }
+
+      .alert i {
+        font-size: 1.3em;
+      }
+
+      .date-range {
+        font-weight: 600;
+        margin: 20px 0;
+        color: var(--primary-color);
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      footer {
+        background: var(--primary-dark);
+        color: white;
+        text-align: center;
+        padding: 20px 0;
+        margin-top: 50px;
+        font-size: 0.9rem;
+      }
+
+      .theme-toggle {
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        z-index: 100;
+        transition: all 0.3s;
+      }
+
+      .theme-toggle:hover {
+        transform: scale(1.1);
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .badge-success {
+        background-color: #d4edda;
+        color: white;
+      }
+
+      .badge-warning {
+        background-color: var(--warning-color);
+        color: white;
+      }
+
+      .badge-info {
+        background-color: var(--off-day-color);
+        color: white;
+      }
+
+      @media (max-width: 768px) {
+        .toolbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .button-group {
+          width: 100%;
+        }
+
+        button {
+          flex: 1;
+          justify-content: center;
+        }
+
+        table {
+          font-size: 14px;
+        }
+
+        th,
+        td {
+          padding: 10px 8px;
+        }
+
+        .employee-info {
+          grid-template-columns: 1fr;
+        }
+
+        .table-container {
+          max-height: 500px;
+        }
+      }
+
+      @media print {
+        button,
+        .theme-toggle {
+          display: none !important;
+        }
+
+        .card {
+          box-shadow: none;
+          border: 1px solid #ddd;
+        }
+
+        body {
+          background: white;
+          color: black;
+        }
+
+        .table-container {
+          overflow: visible;
+          max-height: none;
+          border: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1><i class="fas fa-calendar-alt"></i> I-Report Attendance</h1>
+        <p>Automated attendance tracking for selected date range</p>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="card">
+        <h2 class="card-title">
+          <i class="fas fa-user-clock"></i> Employee Attendance Record
+        </h2>
+
+        <div class="toolbar">
+          <div class="button-group">
+            <button id="generateBtn">
+              <i class="fas fa-sync-alt"></i> Generate Report
+            </button>
+
+            <button id="resetTodayBtn" class="secondary">
+              <i class="fas fa-calendar-day"></i> Generate Today
+            </button>
+
+            <button id="btn_get_employees_by_excel_Sheet" class="secondary">
+              <i class="fas fa-file-text"></i> Load Employees (Excel)
+            </button>
+            <button id="exportEmployeesBtn" class="secondary">
+              <i class="fas fa-file-export"></i> Export Employees
+            </button>
+
+            <input
+              type="file"
+              id="excelFileInput"
+              accept=".xlsx,.xls"
+              style="display: none" />
+            <button class="return-toggle" id="returnToggle">
+              <i class="fas fa-users-between-lines"></i> Dashboard Users
+              <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+
+          <!-- Dropdown for selecting period -->
+          <select id="periodSelector">
+            <option value="weekly">Weekly (Sun-Today)</option>
+            <option value="1-15">1-15 of Month</option>
+            <option value="16-end">116-end of Month</option>
+            <option value="full-month">Full Month</option>
+          </select>
+        </div>
+        <div class="date-range">
+          <i class="fas fa-calendar-week"></i>
+          <span id="dateRangeText">Select date range to display</span>
+        </div>
+
+        <div
+          id="holidayWarning"
+          class="alert alert-warning"
+          style="display: none">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span id="warningText"></span>
+        </div>
+
+        <div class="table-responsive">
+          <button id="copyBtn" class="secondary" style="display: none">
+            <i class="fas fa-copy"></i> Copy Table
+          </button>
+          <button id="prevDayBtn" class="secondary">
+            <i class="fas fa-arrow-left"></i> Previous Day
+          </button>
+          <button id="nextDayBtn" class="secondary">
+            Next Day <i class="fas fa-arrow-right"></i>
+          </button>
+
+          <!-- Table container with scroll -->
+          <div class="table-container">
+            <table id="attendanceTable"></table>
+          </div>
+        </div>
+
+        <div
+          class="legend"
+          style="margin-top: 25px; display: flex; gap: 15px; flex-wrap: wrap">
+          <div><span class="badge badge-success">ATT</span> Attendance day</div>
+          <div>
+            <span class="badge badge-warning">Public</span> Public holiday
+          </div>
+          <div><span class="badge badge-info">OFF</span> Weekend day</div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="container">
+        <p>
+          Generated with <i class="fas fa-heart" style="color: #ff6b6b"></i> by
+          Ahmed Abdel-Zaher | <span id="currentYear"></span>
+        </p>
+      </div>
+    </footer>
+
+    <button class="theme-toggle" id="themeToggle">
+      <i class="fas fa-moon"></i>
+    </button>
+    <script>
+      $(document).ready(function () {
+        let employees = [];
+        const EMPLOYEES_STORAGE_KEY = 'attendance_system_employees';
+
+        // Load employees from localStorage at startup
+        employees =
+          JSON.parse(localStorage.getItem(EMPLOYEES_STORAGE_KEY)) || [];
+
+        if (!employees || employees.length === 0) {
+          employees = [
+            {
+              permId: '244275',
+              tempId: '244775',
+              contract: 'GPS',
+              name: 'Ahmed Mahmoud Mohamed Abdel-Zaher',
+            },
+          ];
+
+          localStorage.setItem(
+            EMPLOYEES_STORAGE_KEY,
+            JSON.stringify(employees)
+          );
+        }
+
+        console.log(employees);
+
+        $('#btn_get_employees_by_excel_Sheet').on('click', function () {
+          $('#excelFileInput').click(); // Open the file input
+        });
+
+        $('#excelFileInput').on('change', function (e) {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+
+            // Get the first sheet
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const employees = XLSX.utils.sheet_to_json(firstSheet);
+
+            console.log('📥 Employees from Excel:', employees);
+
+            // Store with the unified key
+            const EMPLOYEES_STORAGE_KEY = 'attendance_system_employees';
+            localStorage.setItem(
+              EMPLOYEES_STORAGE_KEY,
+              JSON.stringify(employees)
+            );
+
+            generateTable(); // Rebuild the table
+          };
+          reader.readAsArrayBuffer(file);
+        });
+
+        $('#currentYear').text(new Date().getFullYear());
+        $('#copyBtn , #prevDayBtn , #nextDayBtn').hide();
+
+        const publicHolidays = {
+          '2025-01-07': 'Coptic Christmas',
+          '2025-01-25': 'Revolution Day (January 25)',
+          '2025-03-31': 'Eid al-Fitr',
+          '2025-04-01': 'Eid al-Fitr Holiday',
+          '2025-04-02': 'Eid al-Fitr Holiday',
+          '2025-04-21': 'Sham El-Nessim',
+          '2025-04-24': 'Sinai Liberation Day',
+          '2025-05-01': 'Labor Day',
+          '2025-06-05': 'Day of Arafah',
+          '2025-06-06': 'Eid al-Adha',
+          '2025-06-07': 'Eid al-Adha Holiday',
+          '2025-06-08': 'Eid al-Adha Holiday',
+          '2025-06-26': 'Islamic New Year',
+          '2025-07-03': 'June 30 Revolution',
+          '2025-07-23': 'Revolution Day (July 23)',
+          '2025-09-04': "Prophet's Birthday",
+          '2025-10-06': 'Armed Forces Day',
+        };
+
+        const employee = {
+          permId: '244275',
+          tempId: '244775',
+          contract: 'GPS',
+          name: 'Ahmed Mahmoud Mohamed Abdel-Zaher',
+        };
+
+        function showWarning(msg) {
+          $('#warningText').text(msg);
+          $('#holidayWarning').show();
+        }
+
+        // function formatDate(date) {
+        //   return date.toISOString().split('T')[0];
+        // }
+
+        function formatDateDayMonth(date) {
+          const day = date.getDate();
+          const month = date.toLocaleString('en-US', { month: 'long' });
+          return `${day} ${month}`;
+        }
+
+        let currentEndDate = new Date();
+        let selectedPeriod = 'weekly'; // Default period
+
+        // Function to get date range based on selected period
+        function getDateRange() {
+          const today = currentEndDate;
+          const year = today.getFullYear();
+          const month = today.getMonth();
+
+          let startDate, endDate;
+
+          switch (selectedPeriod) {
+            case '1-15':
+              // startDate if last month 31 or 30 or 29 or 28 days
+              startDate = new Date(year, month, 1);
+              endDate = new Date(year, month, 15);
+              break;
+            case '16-end':
+              startDate = new Date(year, month, 16);
+              endDate = new Date(year, month + 1, 0);
+              break;
+            case 'full-month':
+              startDate = new Date(year, month, 1);
+              endDate = new Date(year, month + 1, 0);
+              break;
+            case 'weekly':
+            default:
+              const todayDay = today.getDay(); // 0 = Sunday
+              startDate = new Date(today);
+              startDate.setDate(today.getDate() - todayDay);
+              endDate = new Date(today);
+              break;
+          }
+
+          return { startDate, endDate };
+        }
+
+        // async function generateTable() {
+        //   const $table = $('#attendanceTable');
+        //   const $warning = $('#holidayWarning');
+        //   const $note = $('#dateRangeText');
+
+        //   $table.empty();
+        //   $warning.hide();
+
+        //   const { startDate, endDate } = getDateRange();
+        //   const holidaysMap = new Map(Object.entries(publicHolidays));
+
+        //   if (navigator.onLine) {
+        //     try {
+        //       const response = await fetch(
+        //         `https://date.nager.at/api/v3/PublicHolidays/${currentEndDate.getFullYear()}/EG`
+        //       );
+        //       if (!response.ok) throw new Error('Response not ok');
+
+        //       const holidays = await response.json();
+        //       // merge fetched holidays with local holidays
+        //       holidays.forEach((h) => {
+        //         holidaysMap.set(h.date, h.name);
+        //       });
+        //       console.log('✅ Fetched holidays:', holidaysMap);
+        //     } catch (error) {
+        //       console.warn('⚠ Failed to load holidays:', error);
+        //       showWarning(
+        //         '⚠ Failed to fetch holidays from the internet. Using local holidays only.'
+        //       );
+        //     }
+        //   } else {
+        //     console.warn('🚫 Offline mode — using local holidays only.');
+        //     showWarning('🚫 Offline mode — using local holidays only.');
+        //   }
+
+        //   // Create header row
+        //   const $headerRow = $('<tr>');
+        //   ['Perm ID', 'Temp ID', 'Contract', 'Name'].forEach((text) => {
+        //     $headerRow.append($('<th>').text(text));
+        //   });
+
+        //   // Generate date cells for the selected period
+        //   const dateCells = [];
+        //   const current = new Date(startDate);
+
+        //   while (current <= endDate) {
+        //     dateCells.push(new Date(current));
+        //     $headerRow.append(
+        //       $('<th>').text(formatDateDayMonth(new Date(current)))
+        //     );
+        //     current.setDate(current.getDate() + 1);
+        //   }
+
+        //   $table.append($('<thead>').append($headerRow));
+
+        //   // Create table body
+        //   const $tbody = $('<tbody>');
+
+        //   // Get employees from localStorage
+        //   const EMPLOYEES_STORAGE_KEY = 'attendance_system_employees';
+        //   employees =
+        //     JSON.parse(localStorage.getItem(EMPLOYEES_STORAGE_KEY)) || [];
+
+        //   employees.forEach((employee) => {
+        //     const $dataRow = $('<tr>');
+        //     [
+        //       employee.permId,
+        //       employee.tempId,
+        //       employee.contract,
+        //       employee.name,
+        //     ].forEach((val) => {
+        //       $dataRow.append($('<td>').text(val));
+        //     });
+
+        //     dateCells.forEach((date) => {
+        //       const dateStr = formatDate(date);
+        //       const dayOfWeek = date.getDay();
+        //       const $cell = $('<td>');
+
+        //       if (holidaysMap.has(dateStr)) {
+        //         $cell
+        //           .text('Public')
+        //           .addClass('public')
+        //           .attr('title', holidaysMap.get(dateStr));
+        //         console.log(
+        //           `✅ عطلة يوم ${dateStr}: ${holidaysMap.get(dateStr)}`
+        //         );
+        //       } else if (dayOfWeek === 5 || dayOfWeek === 6) {
+        //         $cell.text('OFF').addClass('off');
+        //       } else {
+        //         $cell.text('ATT').addClass('att');
+        //       }
+
+        //       $dataRow.append($cell);
+        //     });
+
+        //     $tbody.append($dataRow);
+        //   });
+
+        //   $table.append($tbody);
+
+        //   $note.text(
+        //     `Kindly find below the attendance record from ${formatDateDayMonth(
+        //       startDate
+        //     )} to ${formatDateDayMonth(endDate)}`
+        //   );
+
+        //   $('#copyBtn, #prevDayBtn, #nextDayBtn').show();
+        // }
+
+        function formatDate(date) {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        }
+
+        function getHolidaysInRange(startDate, endDate) {
+          const holidaysInRange = {};
+          Object.keys(publicHolidays).forEach((dateStr) => {
+            const holidayDate = new Date(dateStr + 'T00:00:00');
+            if (holidayDate >= startDate && holidayDate <= endDate) {
+              holidaysInRange[dateStr] = publicHolidays[dateStr];
+            }
+          });
+          return holidaysInRange;
+        }
+
+        async function generateTable() {
+          const $table = $('#attendanceTable');
+          const $note = $('#dateRangeText');
+
+          $table.empty();
+
+          const { startDate, endDate } = getDateRange();
+
+          // بدل holidaysMap من API → خذ من local فقط
+          const holidaysMap = new Map(
+            Object.entries(getHolidaysInRange(startDate, endDate))
+          );
+
+          // Create header row
+          const $headerRow = $('<tr>');
+          ['Perm ID', 'Temp ID', 'Contract', 'Name'].forEach((text) => {
+            $headerRow.append($('<th>').text(text));
+          });
+
+          // Generate date cells for the selected period
+          const dateCells = [];
+          const current = new Date(startDate);
+
+          while (current <= endDate) {
+            dateCells.push(new Date(current));
+            $headerRow.append(
+              $('<th>').text(formatDateDayMonth(new Date(current)))
+            );
+            current.setDate(current.getDate() + 1);
+          }
+
+          $table.append($('<thead>').append($headerRow));
+
+          // Create table body
+          const $tbody = $('<tbody>');
+          employees.forEach((employee) => {
+            const $dataRow = $('<tr>');
+            [
+              employee.permId,
+              employee.tempId,
+              employee.contract,
+              employee.name,
+            ].forEach((val) => {
+              $dataRow.append($('<td>').text(val));
+            });
+
+            dateCells.forEach((date) => {
+              const dateStr = formatDate(date);
+              const dayOfWeek = date.getDay();
+              const $cell = $('<td>');
+
+              if (holidaysMap.has(dateStr)) {
+                $cell
+                  .text('Public')
+                  .addClass('public')
+                  .attr('title', holidaysMap.get(dateStr));
+              } else if (dayOfWeek === 5 || dayOfWeek === 6) {
+                $cell.text('OFF').addClass('off');
+              } else {
+                $cell.text('ATT').addClass('att');
+              }
+
+              $dataRow.append($cell);
+            });
+
+            $tbody.append($dataRow);
+          });
+
+          $table.append($tbody);
+
+          $note.text(
+            `Kindly find below the attendance record from ${formatDateDayMonth(
+              startDate
+            )} to ${formatDateDayMonth(endDate)}`
+          );
+
+          $('#copyBtn, #prevDayBtn, #nextDayBtn').show();
+        }
+
+        // Event handler for period selector
+        $('#periodSelector').change(function () {
+          selectedPeriod = $(this).val();
+          generateTable();
+        });
+
+        $('#nextDayBtn').on('click', function () {
+          currentEndDate.setDate(currentEndDate.getDate() + 1);
+          $(this).text(formatDate_btn(currentEndDate));
+          generateTable();
+        });
+
+        $('#prevDayBtn').on('click', function () {
+          currentEndDate.setDate(currentEndDate.getDate() - 1);
+          $(this).text(formatDate_btn(currentEndDate));
+          generateTable();
+        });
+
+        function formatDate_btn(date) {
+          const options = { year: 'numeric', month: 'short', day: 'numeric' };
+          return date.toLocaleDateString('en-US', options);
+        }
+
+        $('#resetTodayBtn').on('click', function () {
+          currentEndDate = new Date();
+          generateTable();
+        });
+
+        function copyTable() {
+          const $table = $('#attendanceTable');
+          if ($table.length === 0) {
+            $('#copyBtn').text('❌ Table not found!');
+            return;
+          }
+
+          const range = document.createRange();
+          range.selectNode($table[0]);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+
+          try {
+            const success = document.execCommand('copy');
+            if (success) {
+              $('#copyBtn').html('<i class="fas fa-check"></i> table copied!');
+            } else {
+              $('#copyBtn').html('<i class="fas fa-times"></i> failed!');
+            }
+          } catch (err) {
+            $('#copyBtn').html(
+              '<i class="fas fa-exclamation-triangle"></i> Error!'
+            );
+            console.error(err);
+          }
+
+          selection.removeAllRanges();
+
+          setTimeout(() => {
+            $('#copyBtn').html('<i class="fas fa-copy"></i> Copy Table');
+          }, 2000);
+        }
+
+        $('#generateBtn').click(generateTable);
+        $('#copyBtn').click(copyTable);
+        $('#printBtn').click(() => window.print());
+
+        $('#themeToggle').click(function () {
+          $('body').toggleClass('dark-mode');
+          localStorage.setItem('darkMode', $('body').hasClass('dark-mode'));
+          updateThemeIcon();
+        });
+
+        function updateThemeIcon() {
+          const icon = $('body').hasClass('dark-mode') ? 'fa-sun' : 'fa-moon';
+          $('#themeToggle i').attr('class', `fas ${icon}`);
+        }
+
+        if (localStorage.getItem('darkMode') === 'true') {
+          $('body').addClass('dark-mode');
+        }
+        updateThemeIcon();
+        $('#returnToggle').click(function () {
+          window.location.href = 'Employees_Management.html';
+        });
+
+        // Export employees to Excel
+        $('#exportEmployeesBtn').click(function () {
+          if (employees.length === 0) {
+            alert('No employees to export!');
+            return;
+          }
+
+          // Convert data to Excel sheet
+          const worksheet = XLSX.utils.json_to_sheet(employees);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees');
+
+          // create and download the file
+          XLSX.writeFile(workbook, 'employees.xlsx');
+        });
+      });
+    </script>
+  </body>
+</html>
