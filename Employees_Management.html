@@ -321,9 +321,7 @@
           <table id="employeesTable">
             <thead>
               <tr>
-                <th>Perm ID</th>
-                <th>Temp ID</th>
-                <th>Contract</th>
+                <th>ID</th>
                 <th>Name</th>
                 <th>Actions</th>
               </tr>
@@ -347,20 +345,8 @@
         <form id="employeeForm">
           <input type="hidden" id="employeeId" />
           <div class="form-group">
-            <label for="permId">Perm ID:</label>
+            <label for="permId">ID:</label>
             <input type="text" id="permId" required />
-          </div>
-          <div class="form-group">
-            <label for="tempId">Temp ID:</label>
-            <input type="text" id="tempId" required />
-          </div>
-          <div class="form-group">
-            <label for="contract">Contract Type:</label>
-            <select id="contract" required>
-              <option value="GPS">GPS</option>
-              <option value="IBS">IBS</option>
-              <option value="Xceed">Xceed</option>
-            </select>
           </div>
           <div class="form-group">
             <label for="name">Full Name:</label>
@@ -425,8 +411,6 @@
           $.each(data, function (index, employee) {
             const $row = $('<tr>');
             $row.append($('<td>').text(employee.permId));
-            $row.append($('<td>').text(employee.tempId));
-            $row.append($('<td>').text(employee.contract));
             $row.append($('<td>').text(employee.name));
 
             const $actionsCell = $('<td>').addClass('actions');
@@ -470,8 +454,6 @@
             currentEditId = id;
             $('#modalTitle').text('Edit Employee');
             $('#permId').val(employee.permId);
-            $('#tempId').val(employee.tempId);
-            $('#contract').val(employee.contract);
             $('#name').val(employee.name);
             $('#employeeModal').show();
           }
@@ -505,10 +487,7 @@
           const filtered = employees.filter(
             (emp) =>
               emp.name.toLowerCase().includes(query.toLowerCase()) ||
-              emp.permId.includes(query) ||
-              emp.tempId.includes(query) ||
-              emp.contract.toLowerCase().includes(query.toLowerCase())
-          );
+              emp.permId.includes(query));
 
           renderEmployees(filtered);
         }
@@ -541,8 +520,6 @@
 
             const employee = {
               permId: $('#permId').val(),
-              tempId: $('#tempId').val(),
-              contract: $('#contract').val(),
               name: $('#name').val(),
             };
 
