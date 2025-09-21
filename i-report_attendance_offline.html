@@ -628,141 +628,46 @@
 
           let startDate, endDate;
 
-          switch (selectedPeriod) {
-            case '1-15':
-              // startDate if last month 31 or 30 or 29 or 28 days
-              startDate = new Date(year, month, 1);
-              endDate = new Date(year, month, 15);
-              break;
-            case '16-end':
-              startDate = new Date(year, month, 16);
-              endDate = new Date(year, month + 1, 0);
-              break;
-            case 'full-month':
-              startDate = new Date(year, month, 1);
-              endDate = new Date(year, month + 1, 0);
-              break;
-            case 'weekly':
-            default:
-              const todayDay = today.getDay(); // 0 = Sunday
-              startDate = new Date(today);
-              startDate.setDate(today.getDate() - todayDay);
-              endDate = new Date(today);
-              break;
-          }
+         switch (selectedPeriod) {
+  case '1-15':
+    startDate = new Date(year, month, 1);
+    endDate = new Date(year, month, 15);
+    break;
+
+  case '16-end':
+    startDate = new Date(year, month, 16);
+    endDate = new Date(year, month + 1, 0);
+    break;
+
+  case 'full-month':
+    startDate = new Date(year, month, 1);
+    endDate = new Date(year, month + 1, 0);
+    break;
+
+  case 'custom-21-20':
+    // من 21 الشهر السابق إلى 20 الشهر الحالي
+    const prevMonth = month - 1;
+    const prevYear = prevMonth < 0 ? year - 1 : year;
+    const adjustedPrevMonth = (prevMonth + 12) % 12;
+
+    startDate = new Date(prevYear, adjustedPrevMonth, 21);
+    endDate = new Date(year, month, 20);
+    break;
+
+  case 'weekly':
+  default:
+    const todayDay = today.getDay(); // 0 = Sunday
+    startDate = new Date(today);
+    startDate.setDate(today.getDate() - todayDay);
+    endDate = new Date(today);
+    break;
+}
+
+return { startDate, endDate };
+
 
           return { startDate, endDate };
         }
-
-        // async function generateTable() {
-        //   const $table = $('#attendanceTable');
-        //   const $warning = $('#holidayWarning');
-        //   const $note = $('#dateRangeText');
-
-        //   $table.empty();
-        //   $warning.hide();
-
-        //   const { startDate, endDate } = getDateRange();
-        //   const holidaysMap = new Map(Object.entries(publicHolidays));
-
-        //   if (navigator.onLine) {
-        //     try {
-        //       const response = await fetch(
-        //         `https://date.nager.at/api/v3/PublicHolidays/${currentEndDate.getFullYear()}/EG`
-        //       );
-        //       if (!response.ok) throw new Error('Response not ok');
-
-        //       const holidays = await response.json();
-        //       // merge fetched holidays with local holidays
-        //       holidays.forEach((h) => {
-        //         holidaysMap.set(h.date, h.name);
-        //       });
-        //       console.log('✅ Fetched holidays:', holidaysMap);
-        //     } catch (error) {
-        //       console.warn('⚠ Failed to load holidays:', error);
-        //       showWarning(
-        //         '⚠ Failed to fetch holidays from the internet. Using local holidays only.'
-        //       );
-        //     }
-        //   } else {
-        //     console.warn('🚫 Offline mode — using local holidays only.');
-        //     showWarning('🚫 Offline mode — using local holidays only.');
-        //   }
-
-        //   // Create header row
-        //   const $headerRow = $('<tr>');
-        //   ['Perm ID', 'Temp ID', 'Contract', 'Name'].forEach((text) => {
-        //     $headerRow.append($('<th>').text(text));
-        //   });
-
-        //   // Generate date cells for the selected period
-        //   const dateCells = [];
-        //   const current = new Date(startDate);
-
-        //   while (current <= endDate) {
-        //     dateCells.push(new Date(current));
-        //     $headerRow.append(
-        //       $('<th>').text(formatDateDayMonth(new Date(current)))
-        //     );
-        //     current.setDate(current.getDate() + 1);
-        //   }
-
-        //   $table.append($('<thead>').append($headerRow));
-
-        //   // Create table body
-        //   const $tbody = $('<tbody>');
-
-        //   // Get employees from localStorage
-        //   const EMPLOYEES_STORAGE_KEY = 'attendance_system_employees';
-        //   employees =
-        //     JSON.parse(localStorage.getItem(EMPLOYEES_STORAGE_KEY)) || [];
-
-        //   employees.forEach((employee) => {
-        //     const $dataRow = $('<tr>');
-        //     [
-        //       employee.permId,
-        //       employee.tempId,
-        //       employee.contract,
-        //       employee.name,
-        //     ].forEach((val) => {
-        //       $dataRow.append($('<td>').text(val));
-        //     });
-
-        //     dateCells.forEach((date) => {
-        //       const dateStr = formatDate(date);
-        //       const dayOfWeek = date.getDay();
-        //       const $cell = $('<td>');
-
-        //       if (holidaysMap.has(dateStr)) {
-        //         $cell
-        //           .text('Public')
-        //           .addClass('public')
-        //           .attr('title', holidaysMap.get(dateStr));
-        //         console.log(
-        //           `✅ عطلة يوم ${dateStr}: ${holidaysMap.get(dateStr)}`
-        //         );
-        //       } else if (dayOfWeek === 5 || dayOfWeek === 6) {
-        //         $cell.text('OFF').addClass('off');
-        //       } else {
-        //         $cell.text('ATT').addClass('att');
-        //       }
-
-        //       $dataRow.append($cell);
-        //     });
-
-        //     $tbody.append($dataRow);
-        //   });
-
-        //   $table.append($tbody);
-
-        //   $note.text(
-        //     `Kindly find below the attendance record from ${formatDateDayMonth(
-        //       startDate
-        //     )} to ${formatDateDayMonth(endDate)}`
-        //   );
-
-        //   $('#copyBtn, #prevDayBtn, #nextDayBtn').show();
-        // }
 
         function formatDate(date) {
           const year = date.getFullYear();
@@ -965,3 +870,4 @@
     </script>
   </body>
 </html>
+
