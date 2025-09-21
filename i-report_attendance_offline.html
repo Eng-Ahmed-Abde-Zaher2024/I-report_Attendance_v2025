@@ -528,9 +528,7 @@
         if (!employees || employees.length === 0) {
           employees = [
             {
-              permId: '244275',
-              tempId: '244775',
-              contract: 'GPS',
+              ID: '244275',
               name: 'Ahmed Mahmoud Mohamed Abdel-Zaher',
             },
           ];
@@ -598,9 +596,7 @@
         };
 
         const employee = {
-          permId: '244275',
-          tempId: '244775',
-          contract: 'GPS',
+          ID: '244275',
           name: 'Ahmed Mahmoud Mohamed Abdel-Zaher',
         };
 
@@ -704,7 +700,7 @@ return { startDate, endDate };
 
           // Create header row
           const $headerRow = $('<tr>');
-          ['Perm ID', 'Temp ID', 'Contract', 'Name'].forEach((text) => {
+          ['ID','Name'].forEach((text) => {
             $headerRow.append($('<th>').text(text));
           });
 
@@ -727,9 +723,7 @@ return { startDate, endDate };
           employees.forEach((employee) => {
             const $dataRow = $('<tr>');
             [
-              employee.permId,
-              employee.tempId,
-              employee.contract,
+              employee.ID,
               employee.name,
             ].forEach((val) => {
               $dataRow.append($('<td>').text(val));
@@ -872,5 +866,3 @@ return { startDate, endDate };
     </script>
   </body>
 </html>
-
-
