@@ -296,19 +296,6 @@
       font-weight: 600;
     }
 
-    .override-att-row th {
-      background-color: #17a2b8 !important;
-      padding: 10px 8px;
-    }
-
-    .override-att-row th:first-child {
-      background-color: #20c997 !important;
-      color: white;
-      font-size: 0.85em;
-      padding: 8px;
-      font-weight: 600;
-    }
-
     .checkbox-row input[type="checkbox"] {
       cursor: pointer;
       width: 18px;
@@ -376,43 +363,6 @@
       content: '✓';
       position: absolute;
       color: #856404;
-      font-size: 14px;
-      font-weight: bold;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-    .override-att-row input[type="checkbox"] {
-      cursor: pointer;
-      width: 18px;
-      height: 18px;
-      margin: 0;
-      accent-color: #20c997;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-      border: 2px solid #20c997;
-      border-radius: 3px;
-      background-color: white;
-      position: relative;
-      transition: all 0.2s ease;
-    }
-
-    .override-att-row input[type="checkbox"]:hover {
-      background-color: #d4f1e8;
-      transform: scale(1.1);
-    }
-
-    .override-att-row input[type="checkbox"]:checked {
-      background-color: #20c997;
-      border-color: #20c997;
-    }
-
-    .override-att-row input[type="checkbox"]:checked::after {
-      content: '✓';
-      position: absolute;
-      color: white;
       font-size: 14px;
       font-weight: bold;
       top: 50%;
@@ -551,8 +501,7 @@
       button,
       .theme-toggle,
       .checkbox-row,
-      .public-holiday-row,
-      .override-att-row {
+      .public-holiday-row {
         display: none !important;
       }
 
@@ -904,17 +853,16 @@
           $checkboxRow.append($checkboxCell);
         });
 
-        // Create public holiday row
+        // Create public holiday row - Show checkboxes for ALL public holidays (including Friday/Saturday)
         const $publicHolidayRow = $('<tr>').addClass('public-holiday-row no-copy');
         $publicHolidayRow.append($('<th>').attr('colspan', '2').text('Public Holiday'));
 
         dateCells.forEach((date, index) => {
           const $publicCell = $('<th>');
           const dateStr = formatDate(date);
-          const dayOfWeek = date.getDay();
 
-          // Only show checkbox for working days (not OFF days or already public holidays)
-          if (!(dayOfWeek === 5 || dayOfWeek === 6) && !holidaysMap.has(dateStr)) {
+          // Show checkbox for ALL public holidays (no day of week restrictions)
+          if (holidaysMap.has(dateStr)) {
             const $checkbox = $('<input>')
               .attr('type', 'checkbox')
               .attr('data-col-index', index)
@@ -925,28 +873,7 @@
           $publicHolidayRow.append($publicCell);
         });
 
-        // Create override to ATT row
-        const $overrideAttRow = $('<tr>').addClass('override-att-row no-copy');
-        $overrideAttRow.append($('<th>').attr('colspan', '2').text('Override to ATT'));
-
-        dateCells.forEach((date, index) => {
-          const $overrideCell = $('<th>');
-          const dateStr = formatDate(date);
-          const dayOfWeek = date.getDay();
-
-          // Only show checkbox for public holidays
-          if (holidaysMap.has(dateStr)) {
-            const $checkbox = $('<input>')
-              .attr('type', 'checkbox')
-              .attr('data-col-index', index)
-              .addClass('override-att-checkbox');
-            $overrideCell.append($checkbox);
-          }
-
-          $overrideAttRow.append($overrideCell);
-        });
-
-        $table.append($('<thead>').append($headerRow).append($checkboxRow).append($publicHolidayRow).append($overrideAttRow));
+        $table.append($('<thead>').append($headerRow).append($checkboxRow).append($publicHolidayRow));
 
         // Create table body
         const $tbody = $('<tbody>');
@@ -964,13 +891,14 @@
             const dayOfWeek = date.getDay();
             const $cell = $('<td>');
 
-            if (holidaysMap.has(dateStr)) {
+            // Saturday (5) and Friday (6) are ALWAYS OFF - top priority
+            if (dayOfWeek === 5 || dayOfWeek === 6) {
+              $cell.text('OFF').addClass('off');
+            } else if (holidaysMap.has(dateStr)) {
               $cell
                 .text('Public')
                 .addClass('public')
                 .attr('title', holidaysMap.get(dateStr));
-            } else if (dayOfWeek === 5 || dayOfWeek === 6) {
-              $cell.text('OFF').addClass('off');
             } else {
               $cell.text('ATT').addClass('att');
             }
@@ -1007,10 +935,11 @@
 
               $cell.removeClass('annual');
 
-              if (holidaysMap.has(dateStr)) {
-                $cell.text('Public').addClass('public').attr('title', holidaysMap.get(dateStr));
-              } else if (dayOfWeek === 5 || dayOfWeek === 6) {
+              // Always OFF for Saturday/Friday
+              if (dayOfWeek === 5 || dayOfWeek === 6) {
                 $cell.text('OFF').addClass('off');
+              } else if (holidaysMap.has(dateStr)) {
+                $cell.text('Public').addClass('public').attr('title', holidaysMap.get(dateStr));
               } else {
                 $cell.text('ATT').addClass('att');
               }
@@ -1031,51 +960,26 @@
           // Update all cells in this column
           $tbody.find('tr').each(function () {
             const $cell = $(this).find('td').eq(colIndex + 2);
+            const dateStr = formatDate(dateCells[colIndex]);
+            const dayOfWeek = dateCells[colIndex].getDay();
 
             if (isChecked) {
-              // Remove all previous classes and add public
-              $cell.removeClass('att off annual').addClass('public').text('Public');
-            } else {
-              // Restore original state based on date
-              const dateStr = formatDate(dateCells[colIndex]);
-              const dayOfWeek = dateCells[colIndex].getDay();
-
-              $cell.removeClass('public');
-
-              if (holidaysMap.has(dateStr)) {
-                $cell.text('Public').addClass('public').attr('title', holidaysMap.get(dateStr));
-              } else if (dayOfWeek === 5 || dayOfWeek === 6) {
-                $cell.text('OFF').addClass('off');
+              // If Saturday or Friday, keep as OFF (never override with ATT)
+              if (dayOfWeek === 5 || dayOfWeek === 6) {
+                $cell.removeClass('att public annual').addClass('off').text('OFF');
               } else {
-                $cell.text('ATT').addClass('att');
+                // For weekdays, convert to ATT
+                $cell.removeClass('off public annual').addClass('att').text('ATT');
               }
-            }
-          });
-        });
-
-        // Add event listener for override to ATT checkboxes
-        $('.override-att-checkbox').on('change', function () {
-          const colIndex = $(this).data('col-index');
-          const isChecked = $(this).is(':checked');
-
-          // Update all cells in this column
-          $tbody.find('tr').each(function () {
-            const $cell = $(this).find('td').eq(colIndex + 2);
-
-            if (isChecked) {
-              // Remove all previous classes and add att
-              $cell.removeClass('public off annual').addClass('att').text('ATT');
             } else {
-              // Restore original state based on date
-              const dateStr = formatDate(dateCells[colIndex]);
-              const dayOfWeek = dateCells[colIndex].getDay();
+              // Restore original state
+              $cell.removeClass('att off public');
 
-              $cell.removeClass('att');
-
-              if (holidaysMap.has(dateStr)) {
-                $cell.text('Public').addClass('public').attr('title', holidaysMap.get(dateStr));
-              } else if (dayOfWeek === 5 || dayOfWeek === 6) {
+              // Always OFF for Saturday/Friday
+              if (dayOfWeek === 5 || dayOfWeek === 6) {
                 $cell.text('OFF').addClass('off');
+              } else if (holidaysMap.has(dateStr)) {
+                $cell.text('Public').addClass('public').attr('title', holidaysMap.get(dateStr));
               } else {
                 $cell.text('ATT').addClass('att');
               }
