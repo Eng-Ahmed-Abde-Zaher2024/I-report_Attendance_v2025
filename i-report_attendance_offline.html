@@ -840,8 +840,8 @@
           const dateStr = formatDate(date);
           const dayOfWeek = date.getDay();
 
-          // Only show checkbox for working days (not OFF days or public holidays)
-          if (!(dayOfWeek === 5 || dayOfWeek === 6) && !holidaysMap.has(dateStr)) {
+          // Only show checkbox for working days (not OFF days)
+          if (!(dayOfWeek === 5 || dayOfWeek === 6)) {
             const $checkbox = $('<input>')
               .attr('type', 'checkbox')
               .attr('data-col-index', index)
@@ -852,7 +852,7 @@
           $checkboxRow.append($checkboxCell);
         });
 
-        // Create public holiday row - Show checkboxes for all days EXCEPT Saturday & Friday
+        // Create public holiday row
         const $publicHolidayRow = $('<tr>').addClass('public-holiday-row no-copy');
         $publicHolidayRow.append($('<th>').attr('colspan', '2').text('Public Holiday'));
 
@@ -861,12 +861,15 @@
           const dateStr = formatDate(date);
           const dayOfWeek = date.getDay();
 
-          // Show checkbox for all days EXCEPT Saturday (5) and Friday (6)
+          // Only show checkbox for working days (not OFF days)
           if (!(dayOfWeek === 5 || dayOfWeek === 6)) {
             const $checkbox = $('<input>')
               .attr('type', 'checkbox')
               .attr('data-col-index', index)
               .addClass('public-holiday-checkbox');
+            if (holidaysMap.has(dateStr)) {
+              $checkbox.prop('checked', true);
+            }
             $publicCell.append($checkbox);
           }
 
@@ -891,7 +894,6 @@
             const dayOfWeek = date.getDay();
             const $cell = $('<td>');
 
-            // Saturday (5) and Friday (6) are ALWAYS OFF - top priority
             if (dayOfWeek === 5 || dayOfWeek === 6) {
               $cell.text('OFF').addClass('off');
             } else if (holidaysMap.has(dateStr)) {
@@ -927,7 +929,7 @@
 
             if (isChecked) {
               // Remove all previous classes and add annual
-              $cell.removeClass('att off public').addClass('annual').text('Annual');
+              $cell.removeClass('att off public').addClass('annual').text('Annual').removeAttr('title');
             } else {
               // Restore original state based on date
               const dateStr = formatDate(dateCells[colIndex]);
@@ -935,11 +937,13 @@
 
               $cell.removeClass('annual');
 
-              // Always OFF for Saturday/Friday
+              // Check if public holiday checkbox is checked!
+              const isPublicChecked = $(`.public-holiday-checkbox[data-col-index="${colIndex}"]`).is(':checked');
+
               if (dayOfWeek === 5 || dayOfWeek === 6) {
                 $cell.text('OFF').addClass('off');
-              } else if (holidaysMap.has(dateStr)) {
-                $cell.text('Public').addClass('public').attr('title', holidaysMap.get(dateStr));
+              } else if (isPublicChecked) {
+                $cell.text('Public').addClass('public').attr('title', holidaysMap.get(dateStr) || 'Public Holiday');
               } else {
                 $cell.text('ATT').addClass('att');
               }
@@ -960,26 +964,25 @@
           // Update all cells in this column
           $tbody.find('tr').each(function () {
             const $cell = $(this).find('td').eq(colIndex + 2);
-            const dateStr = formatDate(dateCells[colIndex]);
-            const dayOfWeek = dateCells[colIndex].getDay();
 
             if (isChecked) {
-              // Saturday/Friday should always remain OFF - cannot be overridden
-              if (dayOfWeek === 5 || dayOfWeek === 6) {
-                $cell.removeClass('att public annual').addClass('off').text('OFF');
-              } else {
-                // For other days, convert to Public
-                $cell.removeClass('att off annual').addClass('public').text('Public');
-              }
+              // Remove all previous classes and add public
+              const dateStr = formatDate(dateCells[colIndex]);
+              $cell.removeClass('att off annual').addClass('public').text('Public').attr('title', holidaysMap.get(dateStr) || 'Public Holiday');
             } else {
-              // Restore original state
-              $cell.removeClass('att off public annual');
+              // Restore original state based on date
+              const dateStr = formatDate(dateCells[colIndex]);
+              const dayOfWeek = dateCells[colIndex].getDay();
 
-              // Always OFF for Saturday/Friday
+              $cell.removeClass('public').removeAttr('title');
+
+              // Check if annual leave checkbox is checked!
+              const isAnnualChecked = $(`.annual-checkbox[data-col-index="${colIndex}"]`).is(':checked');
+
               if (dayOfWeek === 5 || dayOfWeek === 6) {
                 $cell.text('OFF').addClass('off');
-              } else if (holidaysMap.has(dateStr)) {
-                $cell.text('Public').addClass('public').attr('title', holidaysMap.get(dateStr));
+              } else if (isAnnualChecked) {
+                $cell.text('Annual').addClass('annual');
               } else {
                 $cell.text('ATT').addClass('att');
               }
@@ -1014,59 +1017,92 @@
         generateTable();
       });
 
-      $('#generateBtn').on('click', function () {
-        generateTable();
-      });
+      function formatDate_btn(date) {
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString('en-US', options);
+      }
 
       $('#resetTodayBtn').on('click', function () {
         currentEndDate = new Date();
         generateTable();
       });
 
-      $('#exportEmployeesBtn').on('click', function () {
-        const employeesData = JSON.parse(
-          localStorage.getItem(EMPLOYEES_STORAGE_KEY)
-        );
-        const worksheet = XLSX.utils.json_to_sheet(employeesData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(
-          workbook,
-          worksheet,
-          'Employees'
-        );
-        XLSX.writeFile(workbook, 'Employees.xlsx');
-      });
+      function copyTable() {
+        const $table = $('#attendanceTable');
+        if ($table.length === 0) {
+          $('#copyBtn').text('❌ Table not found!');
+          return;
+        }
 
-      $('#themeToggle').on('click', function () {
+        const range = document.createRange();
+        range.selectNode($table[0]);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        try {
+          const success = document.execCommand('copy');
+          if (success) {
+            $('#copyBtn').html('<i class="fas fa-check"></i> table copied!');
+          } else {
+            $('#copyBtn').html('<i class="fas fa-times"></i> failed!');
+          }
+        } catch (err) {
+          $('#copyBtn').html(
+            '<i class="fas fa-exclamation-triangle"></i> Error!'
+          );
+          console.error(err);
+        }
+
+        selection.removeAllRanges();
+
+        setTimeout(() => {
+          $('#copyBtn').html('<i class="fas fa-copy"></i> Copy Table');
+        }, 2000);
+      }
+
+      $('#generateBtn').click(generateTable);
+      $('#copyBtn').click(copyTable);
+      $('#printBtn').click(() => window.print());
+
+      $('#themeToggle').click(function () {
         $('body').toggleClass('dark-mode');
-        localStorage.setItem('theme', $('body').hasClass('dark-mode') ? 'dark' : 'light');
+        localStorage.setItem('darkMode', $('body').hasClass('dark-mode'));
+        updateThemeIcon();
       });
 
-      // Load theme from localStorage
-      if (localStorage.getItem('theme') === 'dark') {
+      function updateThemeIcon() {
+        const icon = $('body').hasClass('dark-mode') ? 'fa-sun' : 'fa-moon';
+        $('#themeToggle i').attr('class', `fas ${icon}`);
+      }
+
+      if (localStorage.getItem('darkMode') === 'true') {
         $('body').addClass('dark-mode');
       }
-
-      $('#copyBtn').on('click', function () {
-        const table = document.getElementById('attendanceTable');
-        const range = document.createRange();
-        range.selectNode(table);
-        window.getSelection().removeAllRanges();
-        window.getSelection().addRange(range);
-        document.execCommand('copy');
-        alert('Table copied to clipboard!');
+      updateThemeIcon();
+      $('#returnToggle').click(function () {
+        window.location.href = 'Employees_Management.html';
       });
 
-      function formatDate_btn(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${day}-${month}-${year}`;
-      }
+      // Export employees to Excel
+      $('#exportEmployeesBtn').click(function () {
+        if (employees.length === 0) {
+          alert('No employees to export!');
+          return;
+        }
 
-      generateTable();
+        // Convert data to Excel sheet
+        const worksheet = XLSX.utils.json_to_sheet(employees);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees');
+
+        // create and download the file
+        XLSX.writeFile(workbook, 'employees.xlsx');
+      });
     });
   </script>
 </body>
 
 </html>
+
+
