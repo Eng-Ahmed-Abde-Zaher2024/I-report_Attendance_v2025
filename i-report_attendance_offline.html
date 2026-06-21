@@ -296,6 +296,19 @@
       font-weight: 600;
     }
 
+    .override-att-row th {
+      background-color: #17a2b8 !important;
+      padding: 10px 8px;
+    }
+
+    .override-att-row th:first-child {
+      background-color: #20c997 !important;
+      color: white;
+      font-size: 0.85em;
+      padding: 8px;
+      font-weight: 600;
+    }
+
     .checkbox-row input[type="checkbox"] {
       cursor: pointer;
       width: 18px;
@@ -363,6 +376,43 @@
       content: '✓';
       position: absolute;
       color: #856404;
+      font-size: 14px;
+      font-weight: bold;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .override-att-row input[type="checkbox"] {
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: #20c997;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      border: 2px solid #20c997;
+      border-radius: 3px;
+      background-color: white;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .override-att-row input[type="checkbox"]:hover {
+      background-color: #d4f1e8;
+      transform: scale(1.1);
+    }
+
+    .override-att-row input[type="checkbox"]:checked {
+      background-color: #20c997;
+      border-color: #20c997;
+    }
+
+    .override-att-row input[type="checkbox"]:checked::after {
+      content: '✓';
+      position: absolute;
+      color: white;
       font-size: 14px;
       font-weight: bold;
       top: 50%;
@@ -501,7 +551,8 @@
       button,
       .theme-toggle,
       .checkbox-row,
-      .public-holiday-row {
+      .public-holiday-row,
+      .override-att-row {
         display: none !important;
       }
 
@@ -614,6 +665,7 @@
         </div>
         <div><span class="badge badge-info">OFF</span> Weekend day</div>
         <div><span class="badge" style="background-color: #ff77f3; color: white;">Annual</span> Annual leave</div>
+        <div><span class="badge" style="background-color: #20c997; color: white;">Override</span> Override to ATT</div>
       </div>
     </div>
   </main>
@@ -873,7 +925,28 @@
           $publicHolidayRow.append($publicCell);
         });
 
-        $table.append($('<thead>').append($headerRow).append($checkboxRow).append($publicHolidayRow));
+        // Create override to ATT row
+        const $overrideAttRow = $('<tr>').addClass('override-att-row no-copy');
+        $overrideAttRow.append($('<th>').attr('colspan', '2').text('Override to ATT'));
+
+        dateCells.forEach((date, index) => {
+          const $overrideCell = $('<th>');
+          const dateStr = formatDate(date);
+          const dayOfWeek = date.getDay();
+
+          // Only show checkbox for public holidays
+          if (holidaysMap.has(dateStr)) {
+            const $checkbox = $('<input>')
+              .attr('type', 'checkbox')
+              .attr('data-col-index', index)
+              .addClass('override-att-checkbox');
+            $overrideCell.append($checkbox);
+          }
+
+          $overrideAttRow.append($overrideCell);
+        });
+
+        $table.append($('<thead>').append($headerRow).append($checkboxRow).append($publicHolidayRow).append($overrideAttRow));
 
         // Create table body
         const $tbody = $('<tbody>');
@@ -980,6 +1053,36 @@
           });
         });
 
+        // Add event listener for override to ATT checkboxes
+        $('.override-att-checkbox').on('change', function () {
+          const colIndex = $(this).data('col-index');
+          const isChecked = $(this).is(':checked');
+
+          // Update all cells in this column
+          $tbody.find('tr').each(function () {
+            const $cell = $(this).find('td').eq(colIndex + 2);
+
+            if (isChecked) {
+              // Remove all previous classes and add att
+              $cell.removeClass('public off annual').addClass('att').text('ATT');
+            } else {
+              // Restore original state based on date
+              const dateStr = formatDate(dateCells[colIndex]);
+              const dayOfWeek = dateCells[colIndex].getDay();
+
+              $cell.removeClass('att');
+
+              if (holidaysMap.has(dateStr)) {
+                $cell.text('Public').addClass('public').attr('title', holidaysMap.get(dateStr));
+              } else if (dayOfWeek === 5 || dayOfWeek === 6) {
+                $cell.text('OFF').addClass('off');
+              } else {
+                $cell.text('ATT').addClass('att');
+              }
+            }
+          });
+        });
+
         $note.text(
           `Kindly find below the attendance record from ${formatDateDayMonth(
             startDate
@@ -1007,92 +1110,59 @@
         generateTable();
       });
 
-      function formatDate_btn(date) {
-        const options = { year: 'numeric', month: 'short', day: 'numeric' };
-        return date.toLocaleDateString('en-US', options);
-      }
+      $('#generateBtn').on('click', function () {
+        generateTable();
+      });
 
       $('#resetTodayBtn').on('click', function () {
         currentEndDate = new Date();
         generateTable();
       });
 
-      function copyTable() {
-        const $table = $('#attendanceTable');
-        if ($table.length === 0) {
-          $('#copyBtn').text('❌ Table not found!');
-          return;
-        }
-
-        const range = document.createRange();
-        range.selectNode($table[0]);
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(range);
-
-        try {
-          const success = document.execCommand('copy');
-          if (success) {
-            $('#copyBtn').html('<i class="fas fa-check"></i> table copied!');
-          } else {
-            $('#copyBtn').html('<i class="fas fa-times"></i> failed!');
-          }
-        } catch (err) {
-          $('#copyBtn').html(
-            '<i class="fas fa-exclamation-triangle"></i> Error!'
-          );
-          console.error(err);
-        }
-
-        selection.removeAllRanges();
-
-        setTimeout(() => {
-          $('#copyBtn').html('<i class="fas fa-copy"></i> Copy Table');
-        }, 2000);
-      }
-
-      $('#generateBtn').click(generateTable);
-      $('#copyBtn').click(copyTable);
-      $('#printBtn').click(() => window.print());
-
-      $('#themeToggle').click(function () {
-        $('body').toggleClass('dark-mode');
-        localStorage.setItem('darkMode', $('body').hasClass('dark-mode'));
-        updateThemeIcon();
+      $('#exportEmployeesBtn').on('click', function () {
+        const employeesData = JSON.parse(
+          localStorage.getItem(EMPLOYEES_STORAGE_KEY)
+        );
+        const worksheet = XLSX.utils.json_to_sheet(employeesData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(
+          workbook,
+          worksheet,
+          'Employees'
+        );
+        XLSX.writeFile(workbook, 'Employees.xlsx');
       });
 
-      function updateThemeIcon() {
-        const icon = $('body').hasClass('dark-mode') ? 'fa-sun' : 'fa-moon';
-        $('#themeToggle i').attr('class', `fas ${icon}`);
-      }
+      $('#themeToggle').on('click', function () {
+        $('body').toggleClass('dark-mode');
+        localStorage.setItem('theme', $('body').hasClass('dark-mode') ? 'dark' : 'light');
+      });
 
-      if (localStorage.getItem('darkMode') === 'true') {
+      // Load theme from localStorage
+      if (localStorage.getItem('theme') === 'dark') {
         $('body').addClass('dark-mode');
       }
-      updateThemeIcon();
-      $('#returnToggle').click(function () {
-        window.location.href = 'Employees_Management.html';
+
+      $('#copyBtn').on('click', function () {
+        const table = document.getElementById('attendanceTable');
+        const range = document.createRange();
+        range.selectNode(table);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        document.execCommand('copy');
+        alert('Table copied to clipboard!');
       });
 
-      // Export employees to Excel
-      $('#exportEmployeesBtn').click(function () {
-        if (employees.length === 0) {
-          alert('No employees to export!');
-          return;
-        }
+      function formatDate_btn(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${day}-${month}-${year}`;
+      }
 
-        // Convert data to Excel sheet
-        const worksheet = XLSX.utils.json_to_sheet(employees);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees');
-
-        // create and download the file
-        XLSX.writeFile(workbook, 'employees.xlsx');
-      });
+      generateTable();
     });
   </script>
 </body>
 
 </html>
-
-
