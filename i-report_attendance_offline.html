@@ -614,7 +614,6 @@
         </div>
         <div><span class="badge badge-info">OFF</span> Weekend day</div>
         <div><span class="badge" style="background-color: #ff77f3; color: white;">Annual</span> Annual leave</div>
-        <div><span class="badge" style="background-color: #20c997; color: white;">Override</span> Override to ATT</div>
       </div>
     </div>
   </main>
@@ -853,16 +852,17 @@
           $checkboxRow.append($checkboxCell);
         });
 
-        // Create public holiday row - Show checkboxes for ALL public holidays (including Friday/Saturday)
+        // Create public holiday row - Show checkboxes for all days EXCEPT Saturday & Friday
         const $publicHolidayRow = $('<tr>').addClass('public-holiday-row no-copy');
         $publicHolidayRow.append($('<th>').attr('colspan', '2').text('Public Holiday'));
 
         dateCells.forEach((date, index) => {
           const $publicCell = $('<th>');
           const dateStr = formatDate(date);
+          const dayOfWeek = date.getDay();
 
-          // Show checkbox for ALL public holidays (no day of week restrictions)
-          if (holidaysMap.has(dateStr)) {
+          // Show checkbox for all days EXCEPT Saturday (5) and Friday (6)
+          if (!(dayOfWeek === 5 || dayOfWeek === 6)) {
             const $checkbox = $('<input>')
               .attr('type', 'checkbox')
               .attr('data-col-index', index)
@@ -964,16 +964,16 @@
             const dayOfWeek = dateCells[colIndex].getDay();
 
             if (isChecked) {
-              // If Saturday or Friday, keep as OFF (never override with ATT)
+              // Saturday/Friday should always remain OFF - cannot be overridden
               if (dayOfWeek === 5 || dayOfWeek === 6) {
                 $cell.removeClass('att public annual').addClass('off').text('OFF');
               } else {
-                // For weekdays, convert to ATT
-                $cell.removeClass('off public annual').addClass('att').text('ATT');
+                // For other days, convert to Public
+                $cell.removeClass('att off annual').addClass('public').text('Public');
               }
             } else {
               // Restore original state
-              $cell.removeClass('att off public');
+              $cell.removeClass('att off public annual');
 
               // Always OFF for Saturday/Friday
               if (dayOfWeek === 5 || dayOfWeek === 6) {
